@@ -96,12 +96,14 @@ def fetch_and_publish():
             # Ensure the article contains necessary fields
             title = article.get('title', 'Untitled Article')  # Fallback if title is missing
             description = article.get('seendescription', article.get('summary', 'No description available.'))  # Fallback if description is missing
-            content = article.get('body', article.get('extrasummary', 'No content available.'))  # Fallback if content is missing
-            language = article.get('language', 'English')
+            content = article.get('body', article.get('extrasummary'))  # Trying multiple possible content fields
+            
+            # If content is still None, try to create a fallback using title and description
+            if not content:
+                print(f"Missing detailed content, generating content from title and description: {title}")
+                content = f"{title} - {description}"
 
-            if not content or content == 'No content available.':
-                print(f"Missing content in the article, skipping article: {title}")
-                continue
+            language = article.get('language', 'English')
 
             # If the article is not in English, translate it
             if language.lower() != 'english':
