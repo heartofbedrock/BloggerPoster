@@ -35,8 +35,8 @@ def get_news_articles():
     return response.json().get('articles', [])
 
 def generate_blog_content(article_title, article_description, article_content):
-    # Use the new API call format
-    response = openai.completions.create(
+    # Use the correct API call for chat-based completion
+    response = openai.ChatCompletion.create(
         model="gpt-4", 
         messages=[
             {"role": "system", "content": "You are a helpful assistant writing technology blog posts."},
