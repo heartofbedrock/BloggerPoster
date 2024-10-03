@@ -24,6 +24,9 @@ def get_news_articles():
     
     response = requests.get(gdelt_url, params=params)
     
+    # Debugging: Print raw response content
+    print(f"API response: {response.text}")
+    
     # Check if the request was successful
     if response.status_code == 200:
         articles = response.text.split('\n')
@@ -40,6 +43,9 @@ def get_news_articles():
                         'publishedAt': article_data[3],  # Date of publication
                         'source': article_data[4]  # Source of the article
                     })
+        # Debugging: Print parsed articles
+        print(f"Parsed articles: {article_list}")
+        
         return article_list
     else:
         print(f"Error fetching articles: {response.status_code}")
