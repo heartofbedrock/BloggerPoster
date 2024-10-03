@@ -59,37 +59,40 @@ def post_to_blogger(blog_content, title):
         print(f"An error occurred: {e}")
 
 def fetch_and_publish():
-    print("Fetching and publishing a new blog post...")
-    articles = get_news_articles()
+    while True:  # Loop until a valid article is found
+        print("Fetching and publishing a new blog post...")
+        articles = get_news_articles()
 
-    if not articles:
-        print("No articles found.")
-        return
-
-    for article in articles:
-        # Ensure the article is in English and contains necessary fields
-        if article.get('language') != 'English':
-            print(f"Skipping non-English article: {article.get('title', 'No title')}")
+        if not articles:
+            print("No articles found. Retrying...")
+            time.sleep(10)  # Wait a bit before retrying
             continue
 
-        title = article.get('title', 'Untitled Article')  # Fallback if title is missing
-        description = article.get('seendescription', article.get('summary', 'No description available.'))  # Fallback if description is missing
-        content = article.get('body', article.get('extrasummary', 'No content available.'))  # Fallback if content is missing
+        for article in articles:
+            # Ensure the article is in English and contains necessary fields
+            if article.get('language') != 'English':
+                print(f"Skipping non-English article: {article.get('title', 'No title')}")
+                continue
 
-        if not content or content == 'No content available.':
-            print("Missing content in the article, skipping...")
-            continue
+            title = article.get('title', 'Untitled Article')  # Fallback if title is missing
+            description = article.get('seendescription', article.get('summary', 'No description available.'))  # Fallback if description is missing
+            content = article.get('body', article.get('extrasummary', 'No content available.'))  # Fallback if content is missing
 
-        # Use ChatGPT to generate the blog content
-        blog_content = generate_blog_content(title, description, content)
+            if not content or content == 'No content available.':
+                print("Missing content in the article, skipping...")
+                continue
 
-        # Post the generated content to Blogger
-        post_to_blogger(blog_content, title)
+            # Use ChatGPT to generate the blog content
+            blog_content = generate_blog_content(title, description, content)
 
-        # Exit after posting the first valid article
-        return
+            # Post the generated content to Blogger
+            post_to_blogger(blog_content, title)
 
-    print("No valid articles to publish.")
+            # Once a valid article is published, exit the loop
+            return
+
+        print("No valid articles to publish. Retrying...")
+        time.sleep(10)  # Wait a bit before retrying
 
 # Scheduler setup to run every hour
 scheduler = BlockingScheduler()
