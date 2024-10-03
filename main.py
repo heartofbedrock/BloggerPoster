@@ -18,7 +18,7 @@ def get_news_articles():
     params = {
         'query': 'technology',  # Specify the keyword you want to fetch articles for
         'mode': 'artlist',  # Article list mode
-        'maxrecords': 10,  # Number of articles to fetch
+        'maxrecords': 100,  # Number of articles to fetch
         'format': 'json',  # Ensure the response is in JSON format
         'filter': 'lang:english'  # Filter articles to only English language
     }
