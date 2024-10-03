@@ -7,68 +7,54 @@ import time
 
 # Set up your API keys
 OPENAI_API_KEY = 'your_openai_api_key'
+GOOGLE_NEWS_API_KEY = 'your_google_news_api_key'
 BLOGGER_API_KEY = 'your_blogger_api_key'
 BLOGGER_BLOG_ID = 'your_blogger_blog_id'
 
 # OpenAI configuration
 openai.api_key = OPENAI_API_KEY
 
+# GDELT API configuration
+GDELT_URL = "https://api.gdeltproject.org/api/v2/doc/doc"
+DEFAULT_QUERY = "technology"
+MAX_ARTICLES = 150
+
 def get_news_articles():
-    gdelt_url = "https://api.gdeltproject.org/api/v2/doc/doc"
     params = {
-        'query': 'technology',  # Specify the keyword you want to fetch articles for
-        'mode': 'artlist',  # Article list mode
-        'maxrecords': 150,  # Number of articles to fetch
-        'format': 'json'  # Ensure the response is in JSON format
+        'query': DEFAULT_QUERY,
+        'mode': 'artlist',
+        'maxrecords': MAX_ARTICLES,
+        'format': 'json'
     }
+    response = requests.get(GDELT_URL, params=params)
 
-    try:
-        response = requests.get(gdelt_url, params=params)
-        
-        # Log the status code and content for debugging
-        print(f"Response status code: {response.status_code}")
-        print(f"Response content: {response.text}")
-
-        # Check if response is valid
-        if response.status_code == 200:
-            try:
-                articles = response.json().get('articles', [])
-                if not articles:
-                    print("No articles found in the response.")
-                else:
-                    print(f"Fetched {len(articles)} articles.")
-                return articles
-            except requests.exceptions.JSONDecodeError:
-                print("Error decoding the JSON response. Check API response.")
-                return []
-        else:
-            print(f"Error fetching articles: {response.status_code}. Retrying...")
-            return []
-
-    except requests.exceptions.RequestException as e:
-        print(f"Request failed: {e}")
+    # Check if the response is valid and contains articles
+    if response.status_code != 200:
+        print(f"Error fetching articles, Status Code: {response.status_code}")
         return []
 
-def translate_to_english(text, language):
-    prompt = f"Translate the following {language} text into English:\n\n{text}"
-
-    response = openai.Completion.create(
-        model="gpt-4",
-        prompt=prompt,
-        max_tokens=1000
-    )
-
-    return response['choices'][0]['text']
+    articles = response.json().get('articles', [])
+    return articles
 
 def generate_blog_content(article_title, article_description, article_content):
-    prompt = f"Create a blog post about technology. Use the following title and summary:\n\nTitle: {article_title}\n\nSummary: {article_description}\n\nContent: {article_content}\n\nExpand the content with additional insights about the topic."
+    messages = [
+        {
+            "role": "system", 
+            "content": "You are a helpful assistant who writes engaging blog posts about technology."
+        },
+        {
+            "role": "user", 
+            "content": f"Create a blog post about technology. Use the following title and summary:\n\nTitle: {article_title}\n\nSummary: {article_description}\n\nContent: {article_content}\n\nExpand the content with additional insights about the topic."
+        }
+    ]
 
-    response = openai.Completion.create(
+    response = openai.ChatCompletion.create(
         model="gpt-4", 
-        prompt=prompt, 
+        messages=messages,
         max_tokens=1000
     )
-    return response['choices'][0]['text']
+
+    return response['choices'][0]['message']['content']
 
 def post_to_blogger(blog_content, title):
     try:
@@ -83,44 +69,35 @@ def post_to_blogger(blog_content, title):
         print(f"An error occurred: {e}")
 
 def fetch_and_publish():
-    while True:  # Loop until a valid English article is found
-        print("Fetching and publishing a new blog post...")
-        articles = get_news_articles()
+    print("Fetching and publishing a new blog post...")
+    articles = get_news_articles()
 
-        if not articles:
-            print("No articles found. Retrying...")
-            time.sleep(10)  # Wait a bit before retrying
+    if not articles:
+        print("No articles found.")
+        return
+
+    for article in articles:
+        title = article.get('title')
+        description = article.get('seendate')  # Fallback to seen date if no description
+        content = article.get('socialimage')   # Fallback to social image if no content
+        language = article.get('language')
+
+        if language != 'English':
+            print(f"Skipping non-English article: {title}")
             continue
 
-        for article in articles:
-            # Ensure the article contains necessary fields
-            title = article.get('title', 'Untitled Article')  # Fallback if title is missing
-            description = article.get('seendescription', article.get('summary', 'No description available.'))  # Fallback if description is missing
-            content = article.get('body', article.get('extrasummary'))  # Trying multiple possible content fields
-            
-            # If content is still None, try to create a fallback using title and description
-            if not content:
-                print(f"Missing detailed content, generating content from title and description: {title}")
-                content = f"{title} - {description}"
+        if not title or not description or not content:
+            print(f"Missing detailed content, generating content from title and description: {title}")
+            content = description if description else "Technology news update"
 
-            language = article.get('language', 'English')
+        # Use ChatGPT to generate the blog content
+        blog_content = generate_blog_content(title, description, content)
 
-            # If the article is not in English, translate it
-            if language.lower() != 'english':
-                print(f"Translating non-English article from {language}: {title}")
-                content = translate_to_english(content, language)
-
-            # Use ChatGPT to generate the blog content
-            blog_content = generate_blog_content(title, description, content)
-
-            # Post the generated content to Blogger
-            post_to_blogger(blog_content, title)
-
-            # Once a valid article is published, exit the loop
-            return
-
-        print("No valid articles to publish. Retrying...")
-        time.sleep(10)  # Wait a bit before retrying
+        # Post the generated content to Blogger
+        post_to_blogger(blog_content, title)
+        break
+    else:
+        print("No valid articles to publish.")
 
 # Scheduler setup to run every hour
 scheduler = BlockingScheduler()
