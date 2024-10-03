@@ -31,7 +31,6 @@ def get_news_articles():
             print("No articles found in the response.")
         else:
             print(f"Fetched {len(articles)} articles.")
-            print("Sample article for debugging:", articles[0])  # Log one article for debugging
         return articles
     else:
         print(f"Error fetching articles: {response.status_code}")
@@ -67,20 +66,30 @@ def fetch_and_publish():
         print("No articles found.")
         return
 
-    article = articles[0]  # Get the latest article
-    title = article.get('title', 'Untitled Article')  # Fallback if title is missing
-    description = article.get('seendescription', article.get('summary', 'No description available.'))  # Fallback if description is missing
-    content = article.get('body', article.get('extrasummary', 'No content available.'))  # Fallback if content is missing
+    for article in articles:
+        # Ensure the article is in English and contains necessary fields
+        if article.get('language') != 'English':
+            print(f"Skipping non-English article: {article.get('title', 'No title')}")
+            continue
 
-    if not content or content == 'No content available.':
-        print("Missing content in the article, skipping...")
+        title = article.get('title', 'Untitled Article')  # Fallback if title is missing
+        description = article.get('seendescription', article.get('summary', 'No description available.'))  # Fallback if description is missing
+        content = article.get('body', article.get('extrasummary', 'No content available.'))  # Fallback if content is missing
+
+        if not content or content == 'No content available.':
+            print("Missing content in the article, skipping...")
+            continue
+
+        # Use ChatGPT to generate the blog content
+        blog_content = generate_blog_content(title, description, content)
+
+        # Post the generated content to Blogger
+        post_to_blogger(blog_content, title)
+
+        # Exit after posting the first valid article
         return
 
-    # Use ChatGPT to generate the blog content
-    blog_content = generate_blog_content(title, description, content)
-
-    # Post the generated content to Blogger
-    post_to_blogger(blog_content, title)
+    print("No valid articles to publish.")
 
 # Scheduler setup to run every hour
 scheduler = BlockingScheduler()
