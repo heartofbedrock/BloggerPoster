@@ -22,17 +22,31 @@ def get_news_articles():
         'format': 'json'  # Ensure the response is in JSON format
     }
 
-    response = requests.get(gdelt_url, params=params)
+    try:
+        response = requests.get(gdelt_url, params=params)
+        
+        # Log the status code and content for debugging
+        print(f"Response status code: {response.status_code}")
+        print(f"Response content: {response.text}")
 
-    if response.status_code == 200:
-        articles = response.json().get('articles', [])
-        if not articles:
-            print("No articles found in the response.")
+        # Check if response is valid
+        if response.status_code == 200:
+            try:
+                articles = response.json().get('articles', [])
+                if not articles:
+                    print("No articles found in the response.")
+                else:
+                    print(f"Fetched {len(articles)} articles.")
+                return articles
+            except requests.exceptions.JSONDecodeError:
+                print("Error decoding the JSON response. Check API response.")
+                return []
         else:
-            print(f"Fetched {len(articles)} articles.")
-        return articles
-    else:
-        print(f"Error fetching articles: {response.status_code}")
+            print(f"Error fetching articles: {response.status_code}. Retrying...")
+            return []
+
+    except requests.exceptions.RequestException as e:
+        print(f"Request failed: {e}")
         return []
 
 def translate_to_english(text, language):
