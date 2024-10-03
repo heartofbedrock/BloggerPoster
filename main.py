@@ -14,14 +14,8 @@ openai.api_key = OPENAI_API_KEY
 
 # Function to get news articles from GDELT API
 def get_news_articles():
-    gdelt_url = "https://api.gdeltproject.org/api/v2/doc/doc"
-    params = {
-        'query': 'technology',  # Specify the keyword you want to fetch articles for
-        'mode': 'artlist',  # Article list mode
-        'maxrecords': 10,  # Number of articles to fetch
-        'sort': 'date'  # Sort by date
-    }
-    
+    gdelt_url = "https://api.gdeltproject.org/api/v2/doc/doc?query=technology&mode=artlist&maxrecords=10&format=json&filter=lang:english"
+
     response = requests.get(gdelt_url, params=params)
     
     # Debugging: Print raw response content
