@@ -18,9 +18,8 @@ def get_news_articles():
     params = {
         'query': 'technology',  # Specify the keyword you want to fetch articles for
         'mode': 'artlist',  # Article list mode
-        'maxrecords': 100,  # Number of articles to fetch
-        'format': 'json',  # Ensure the response is in JSON format
-        'filter': 'lang:english'  # Filter articles to only English language
+        'maxrecords': 1000,  # Number of articles to fetch
+        'format': 'json'  # Ensure the response is in JSON format
     }
 
     response = requests.get(gdelt_url, params=params)
@@ -35,6 +34,17 @@ def get_news_articles():
     else:
         print(f"Error fetching articles: {response.status_code}")
         return []
+
+def translate_to_english(text, language):
+    prompt = f"Translate the following {language} text into English:\n\n{text}"
+
+    response = openai.Completion.create(
+        model="gpt-4",
+        prompt=prompt,
+        max_tokens=1000
+    )
+
+    return response['choices'][0]['text']
 
 def generate_blog_content(article_title, article_description, article_content):
     prompt = f"Create a blog post about technology. Use the following title and summary:\n\nTitle: {article_title}\n\nSummary: {article_description}\n\nContent: {article_content}\n\nExpand the content with additional insights about the topic."
@@ -59,7 +69,7 @@ def post_to_blogger(blog_content, title):
         print(f"An error occurred: {e}")
 
 def fetch_and_publish():
-    while True:  # Loop until a valid article is found
+    while True:  # Loop until a valid English article is found
         print("Fetching and publishing a new blog post...")
         articles = get_news_articles()
 
@@ -69,18 +79,20 @@ def fetch_and_publish():
             continue
 
         for article in articles:
-            # Ensure the article is in English and contains necessary fields
-            if article.get('language') != 'English':
-                print(f"Skipping non-English article: {article.get('title', 'No title')}")
-                continue
-
+            # Ensure the article contains necessary fields
             title = article.get('title', 'Untitled Article')  # Fallback if title is missing
             description = article.get('seendescription', article.get('summary', 'No description available.'))  # Fallback if description is missing
             content = article.get('body', article.get('extrasummary', 'No content available.'))  # Fallback if content is missing
+            language = article.get('language', 'English')
 
             if not content or content == 'No content available.':
-                print("Missing content in the article, skipping...")
+                print(f"Missing content in the article, skipping article: {title}")
                 continue
+
+            # If the article is not in English, translate it
+            if language.lower() != 'english':
+                print(f"Translating non-English article from {language}: {title}")
+                content = translate_to_english(content, language)
 
             # Use ChatGPT to generate the blog content
             blog_content = generate_blog_content(title, description, content)
