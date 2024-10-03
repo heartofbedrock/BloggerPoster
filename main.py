@@ -28,32 +28,22 @@ def get_news_articles():
     }
     response = requests.get(GDELT_URL, params=params)
 
-    # Check if the response is valid and contains articles
     if response.status_code != 200:
         print(f"Error fetching articles, Status Code: {response.status_code}")
         return []
 
-    articles = response.json().get('articles', [])
-    return articles
+    return response.json().get('articles', [])
 
 def generate_blog_content(article_title, article_description, article_content):
-    messages = [
-        {
-            "role": "system", 
-            "content": "You are a helpful assistant who writes engaging blog posts about technology."
-        },
-        {
-            "role": "user", 
-            "content": f"Create a blog post about technology. Use the following title and summary:\n\nTitle: {article_title}\n\nSummary: {article_description}\n\nContent: {article_content}\n\nExpand the content with additional insights about the topic."
-        }
-    ]
-
-    response = openai.ChatCompletion.create(
+    # Use the new API call format
+    response = openai.completions.create(
         model="gpt-4", 
-        messages=messages,
+        messages=[
+            {"role": "system", "content": "You are a helpful assistant writing technology blog posts."},
+            {"role": "user", "content": f"Title: {article_title}\nSummary: {article_description}\nContent: {article_content}"}
+        ],
         max_tokens=1000
     )
-
     return response['choices'][0]['message']['content']
 
 def post_to_blogger(blog_content, title):
@@ -87,22 +77,15 @@ def fetch_and_publish():
             continue
 
         if not title or not description or not content:
-            print(f"Missing detailed content, generating content from title and description: {title}")
-            content = description if description else "Technology news update"
+            print(f"Missing information in the article, skipping...")
+            continue
 
-        # Use ChatGPT to generate the blog content
         blog_content = generate_blog_content(title, description, content)
-
-        # Post the generated content to Blogger
         post_to_blogger(blog_content, title)
-        break
-    else:
-        print("No valid articles to publish.")
+        break  # Stop after publishing one valid article
 
-# Scheduler setup to run every hour
+# Scheduler setup
 scheduler = BlockingScheduler()
-
-# Schedule the task to run every hour
 scheduler.add_job(fetch_and_publish, 'interval', hours=1)
 
 if __name__ == "__main__":
