@@ -6,9 +6,6 @@ from googleapiclient.errors import HttpError
 from apscheduler.schedulers.blocking import BlockingScheduler
 import time
 
-# Run openai migrate to upgrade OpenAI calls
-subprocess.run(["openai", "migrate"], check=True)
-
 # Set up your API keys
 OPENAI_API_KEY = 'your_openai_api_key'
 GOOGLE_NEWS_API_KEY = 'your_google_news_api_key'
